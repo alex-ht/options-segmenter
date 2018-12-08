@@ -1,12 +1,14 @@
 #!/bin/bash
 set -exu
+. ./cmd.sh
 
 stage=-10
 num_jobs=8
 suffix=_any
 
-[ -f cmd.sh ] && . cmd.sh
+. ./path.sh
 . ./utils/parse_options.sh
+unset LC_ALL;
 
 if [ $stage -le -2 ]; then
   # Lexicon Preparation,
@@ -18,7 +20,7 @@ if [ $stage -le -2 ]; then
   local/prepare_data.sh || exit 1;
 fi
 
-if [ $stage -le 1 ]; then
+if [ $stage -le -1 ]; then
   utils/subset_data_dir.sh data/all 5000 data/train${suffix}5k
   LANG="zh_TW.UTF-8" local/replace_label.py < data/all/text > data/train${suffix}5k/text
   # add prefix
@@ -42,16 +44,17 @@ if [ $stage -le 0 ]; then
     LC_ALL="C" sort data/local/dict/$x | uniq > data/local/dict/${x}.tmp
     mv data/local/dict/${x}.tmp data/local/dict/$x
   done
+  [ -f data/lang${suffix}/G.fst ] && rm data/lang${suffix}/G.fst
   utils/prepare_lang.sh \
     --position-dependent-phones true \
     --num-sil-states 1 \
     data/local/dict "<SPN>" data/local/lang data/lang${suffix}
-  local/generate_grammar.py |\
-  fstcompile --isymbols=data/lang${suffix}/words.txt \
-             --osymbols=data/lang${suffix}/words.txt | fstarcsort > data/lang${suffix}/G.fst
+  LANG="zh_TW.UTF-8" local/generate_grammar.py | \
+    fstcompile --isymbols=data/lang${suffix}/words.txt \
+               --osymbols=data/lang${suffix}/words.txt | fstarcsort > data/lang${suffix}/G.fst
 fi
 
-if [ $stage -le 2 ]; then
+if [ $stage -le 1 ]; then
   echo "$0: making mfccs"
   for x in all train${suffix}5k finetune test; do
     if [ ! -f data/$x/feats.scp ]; then
@@ -60,11 +63,11 @@ if [ $stage -le 2 ]; then
       utils/fix_data_dir.sh data/$x
     fi
   done
-  utils/combine_data.sh data/train${suffix}_comb data/train data/train${suffix}5k
+  utils/combine_data.sh data/train${suffix}_comb data/all data/train${suffix}5k
 fi
 
 # mono
-if [ $stage -le 3 ]; then
+if [ $stage -le 2 ]; then
   # train mono
   steps/train_mono.sh --boost-silence 1.25 --cmd "$train_cmd" --nj $num_jobs \
     data/train${suffix}_comb data/lang${suffix} exp${suffix}/mono
@@ -75,7 +78,7 @@ if [ $stage -le 3 ]; then
 fi
 
 # triphone
-if [ $stage -le 4 ]; then
+if [ $stage -le 3 ]; then
   echo "$0: train tri1 model"
   # train tri1 [first triphone pass]
   steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
@@ -95,7 +98,7 @@ if [ $stage -le 4 ]; then
     data/train${suffix}_comb data/lang${suffix} exp${suffix}/tri2 exp${suffix}/tri2_ali
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
   echo "$0: train tri3 model"
   # tri3
   steps/train_sat_basis.sh --cmd "$train_cmd" \
@@ -111,7 +114,7 @@ if [ $stage -le 5 ]; then
 
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 5 ]; then
   echo "$0: finetuneing"
   # align tri4
   steps/align_basis_fmllr.sh --cmd "$train_cmd" --nj $num_jobs \
