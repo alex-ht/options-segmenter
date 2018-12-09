@@ -117,7 +117,7 @@ fi
 if [ $stage -le 5 ]; then
   echo "$0: finetuneing"
   # align tri4
-  steps/align_basis_fmllr.sh --cmd "$train_cmd" --nj $num_jobs \
+  steps/align_basis_fmllr.sh --cmd "$train_cmd" --nj 1 \
     data/finetune data/lang${suffix} exp${suffix}/tri4 exp${suffix}/tri4_finetune_ali
 
   # decode tri5
@@ -125,14 +125,20 @@ if [ $stage -le 5 ]; then
     utils/mkgraph.sh data/lang${suffix} exp${suffix}/tri4 exp${suffix}/tri4/graph
 
   steps/decode_basis_fmllr.sh --cmd "$decode_cmd" --nj 1 \
+    --scoring-opts "--min-lmwt 1 --max-lmwt 1 --word-ins-penalty 0.0" \
     exp${suffix}/tri4/graph data/finetune exp${suffix}/tri4/decode_finetune
 
   steps/train_mmi.sh --cmd "$train_cmd" \
     data/finetune data/lang${suffix} exp${suffix}/tri4_finetune_ali exp${suffix}/tri4/decode_finetune exp${suffix}/tri4_mmi
+fi
 
-  steps/online/prepare_online_decoding.sh --add-pitch true \
-    data/all data/lang${suffix} exp/tri4 exp/tri4_mmi/final.mdl exp/tri4_online
+if [ $stage -le 6 ]; then
+  steps/online/prepare_online_decoding.sh --add-pitch true --cmd "$train_cmd" \
+    data/all data/lang${suffix} exp${suffix}/tri4 exp${suffix}/tri4_mmi/final.mdl exp${suffix}/tri4_online
 
   steps/online/decode.sh --cmd "$decode_cmd" --nj 1 \
-     exp/tri4/graph data/test exp/tri4_online/decode_test
+     --scoring-opts "--min-lmwt 1 --max-lmwt 1 --word-ins-penalty 0.0" \
+     exp${suffix}/tri4/graph data/test exp${suffix}/tri4_online/decode_test
+
+  utils/show_lattice.sh --mode save T0001 exp${suffix}/tri4_online/decode_test/lat.1.gz data/lang${suffix}/words.txt
 fi
