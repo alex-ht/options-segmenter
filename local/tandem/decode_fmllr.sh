@@ -43,6 +43,7 @@ cmd=run.pl
 si_dir=
 fmllr_update_type=full
 skip_scoring=false
+scoring_opts=
 # End configuration section
 
 echo "$0 $@"  # Print the command line for logging
@@ -106,7 +107,9 @@ fi
 if [ -z "$si_dir" ]; then # we need to do the speaker-independent decoding pass.
   si_dir=${dir}.si # Name it as our decoding dir, but with suffix ".si".
   if [ $stage -le 0 ]; then
-    steps/tandem/decode_si.sh --acwt $acwt --nj $nj --cmd "$cmd" --beam $first_beam --model $alignment_model --max-active $first_max_active $graphdir $data1 $data2 $si_dir || exit 1;
+    local/tandem/decode_si.sh --scoring-opts "$scoring_opts" --acwt $acwt --nj $nj \
+      --cmd "$cmd" --beam $first_beam --model $alignment_model --max-active $first_max_active \
+      $graphdir $data1 $data2 $si_dir || exit 1;
   fi
 fi
 ##
@@ -236,7 +239,7 @@ fi
 if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \
     echo "$0: not scoring because local/score.sh does not exist or not executable." && exit 1;
-  local/score.sh --cmd "$cmd" $data1 $graphdir $dir ||
+  local/score.sh --cmd "$cmd" $scoring_opts $data1 $graphdir $dir ||
     { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
 fi
 

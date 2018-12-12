@@ -63,9 +63,9 @@ srcdir=exp_any/tri4
 alidir=exp_any/tri4_ali
 dir=exp_any/tri5_tandem
 if [ $stage -le 3 ]; then
-  #steps/align_basis_fmllr.sh --nj 8 --cmd "$train_cmd" \
-  #  data/all $lang $srcdir $alidir
-  #[ -f $alidir/trans.1 ] && rm $alidir/trans.*
+  steps/align_basis_fmllr.sh --nj 8 --cmd "$train_cmd" \
+    data/all $lang $srcdir $alidir
+  [ -f $alidir/trans.1 ] && rm $alidir/trans.*
   local/tandem/train_deltas.sh --cmd "$train_cmd" \
     5000 100000 data/all data/all_bnf $lang $alidir $dir
 fi
@@ -77,6 +77,9 @@ if [ $stage -le 4 ]; then
     data/all data/all_bnf $lang $srcdir $alidir
   local/tandem/train_sat.sh --cmd "$train_cmd" \
     5000 100000 data/all data/all_bnf $lang $alidir $dir
+fi
+
+if [ $stage -le 5 ]; then
   $mkgraph_cmd $dir/log/mkgraph.log \
     utils/mkgraph.sh $lang $dir $dir/graph
   local/tandem/decode_fmllr.sh --cmd "$decode_cmd" --nj 1 \
@@ -86,4 +89,16 @@ if [ $stage -le 4 ]; then
     data/finetune data/finetune_bnf $lang $dir ${dir}_finetune_ali
   local/tandem/train_mmi.sh --cmd "$train_cmd" \
     data/finetune data/finetune_bnf $lang ${dir}_finetune_ali ${dir}/decode_finetune ${dir}_mmi
+fi
+
+graph=$dir/graph
+dir=${dir}_mmi
+
+if [ $stage -le 6 ]; then
+  local/tandem/decode_fmllr.sh --cmd "$decode_cmd" --nj 1 \
+    --scoring-opts "--min-lmwt 1 --max-lmwt 1 --word-ins-penalty 0.0" \
+    $graph data/test data/test_bnf $dir/decode_test
+  [ -f T0001.pdf ] && mv T0001.pdf T0001.bak.pdf
+  utils/show_lattice.sh --mode save T0001 $dir/decode_test/lat.1.gz $lang/words.txt
+  mv T0001.pdf T0001.tandem.pdf
 fi
