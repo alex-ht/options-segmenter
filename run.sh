@@ -126,6 +126,7 @@ if [ $stage -le 5 ]; then
 
   steps/decode_basis_fmllr.sh --cmd "$decode_cmd" --nj 1 \
     --scoring-opts "--min-lmwt 1 --max-lmwt 1 --word-ins-penalty 0.0" \
+    --config conf/decode.conf \
     exp${suffix}/tri4/graph data/finetune exp${suffix}/tri4/decode_finetune
 
   steps/train_mmi.sh --cmd "$train_cmd" \
@@ -138,6 +139,7 @@ if [ $stage -le 6 ]; then
 
   steps/online/decode.sh --cmd "$decode_cmd" --nj 1 \
      --scoring-opts "--min-lmwt 1 --max-lmwt 1 --word-ins-penalty 0.0" \
+     --config conf/decode.conf \
      exp${suffix}/tri4/graph data/test exp${suffix}/tri4_online/decode_test
 
   utils/show_lattice.sh --mode save T0001 exp${suffix}/tri4_online/decode_test/lat.1.gz data/lang${suffix}/words.txt

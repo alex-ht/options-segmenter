@@ -97,7 +97,9 @@ dir=${dir}_mmi
 if [ $stage -le 6 ]; then
   local/tandem/decode_fmllr.sh --cmd "$decode_cmd" --nj 1 \
     --scoring-opts "--min-lmwt 1 --max-lmwt 1 --word-ins-penalty 0.0" \
+    --config conf/decode.conf \
     $graph data/test data/test_bnf $dir/decode_test
+  steps/oracle_wer.sh data/test $lang $dir/decode_test
   [ -f T0001.pdf ] && mv T0001.pdf T0001.bak.pdf
   utils/show_lattice.sh --mode save T0001 $dir/decode_test/lat.1.gz $lang/words.txt
   mv T0001.pdf T0001.tandem.pdf
