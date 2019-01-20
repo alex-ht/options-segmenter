@@ -38,7 +38,7 @@ fstreplace --epsilon_on_replace $dir/tmp/O.tmp $(echo "#ROOT" | utils/sym2int.pl
   fstdeterminizestar | fstminimizeencoded | fstarcsort --sort_type=ilabel > $dir/tmp/O.fst
 fstisstochastic $dir/tmp/O.fst
 
-fstarcsort --sort_type=olabel $lang/G.fst | fstcompose - $dir/tmp/O.fst | fstarcsort > $dir/G.fst
+fstarcsort --sort_type=olabel $lang/G.fst | fsttablecompose - $dir/tmp/O.fst | fstarcsort > $dir/G.fst
 set e
 fstisstochastic $dir/G.fst
 exit 0;
